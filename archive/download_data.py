@@ -30,10 +30,13 @@ logger = logging.getLogger("archive_scraper")
 REDIS_AVAILABLE = False
 logger.warning("Redis not available. Using local job tracking.")
 
+# Language for the download
+LANGUAGE = "hindi"
+
 # Configuration
 CONFIG = {
     "base_url": "https://archive.org",
-    "output_folder": "downloads",
+    "output_folder": f"downloads_{LANGUAGE}",
     "metadata_folder": "metadata",
     "file_format": "PDF",
     "concurrent_downloads": 30,  # Per worker
@@ -438,9 +441,9 @@ def main():
     ]
     
     # Load from file if specified
-    if os.path.exists("archive_urls_urdu.txt"): # pass the path of urls
-        item_urls = load_urls_from_file("archive_urls_urdu.txt")
-        logger.info(f"Loaded {len(item_urls)} URLs from archive_urls_urdu.txt")
+    if os.path.exists(f"./url/archive_urls_{LANGUAGE}_chunk1.txt"):
+        item_urls = load_urls_from_file(f"./url/archive_urls_{LANGUAGE}_chunk1.txt")
+        logger.info(f"Loaded {len(item_urls)} URLs from archive_urls_bengali.txt")
     
     # Run the async main function
     asyncio.run(main_async(item_urls))
