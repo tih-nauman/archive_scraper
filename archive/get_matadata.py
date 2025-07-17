@@ -1,107 +1,59 @@
 import requests
-import json 
+import json
 
 
+collection = "texts" # if doing query based extraction
 
-def fetch_aggregateion(aggregations_size=65535, aggregations="year", page_type="collection_details", collection="booksbylanguage_hindi", year=None):
-  """
-  Fetch data from the given URL using the provided headers, payload, and parameters.
+def fetch_aggregation(aggregations_size=65535, aggregations="year", query="", languages=None,
+                      page_type="collection_details", 
+                      collection="booksbylanguage_hindi", year=None):
+    """
+    Fetch data from the given URL using the provided headers, payload, and parameters.
 
-  Args:
+    Args:
     url (str): The base URL to send the GET request to.
     headers (dict): The headers to include in the request.
     payload (dict): The payload to include in the request.
     params (dict): The query parameters to include in the request.
 
-  Returns:
+    Returns:
     requests.models.Response: The response object from the GET request.
-  """
+"""
   
 # Define base URL
-  url = "https://archive.org/services/search/beta/page_production/"  
-  
-  
-  # Define query parameters
-  params = {
-    "user_query": "",
+    url = "https://archive.org/services/search/beta/page_production/"  
+
+
+    # Define query parameters
+    params = {
+    "user_query": query,
     "page_type": page_type,
     "page_target": collection,
     "hits_per_page": 0,
     "aggregations": aggregations,
     "aggregations_size": aggregations_size,
-  }
+    }
   
-  if year:
-    params["filter_map"] = json.dumps({"year": {str(year): "inc"}})
-    
-  response = requests.get(url, params=params)
-  
-  # print(response.json())
-  
-  
-  return response.json()['response']['body']['aggregations'][aggregations]
+#   if language:
+#       params["language"] = "English"
+     
+    filter_map = {} 
+    if year:
+        filter_map = {"year": {str(year): "inc"}, "mediatype": {"texts": "inc"}}
+
+    if languages:
+        language_filters = {}
+        for lang in languages:
+            language_filters[lang] = "inc"
+        filter_map["language"] = language_filters
+    params["filter_map"] = json.dumps(filter_map)
+
+    response = requests.get(url, params=params)
+
+    # print(response.json())
 
 
-
-# def fetch_data_with_params(
-#   page =1,
-#   hits_per_page = 1000,
-#   page_type = "collection_details",
-#   collection="booksbylanguage_hindi", years=None,
-#   subjects=None):
-#   """
-#   Fetch data from the given URL using the provided headers, payload, and parameters.
-
-#   Args:
-#     base_url (str): The base URL to send the GET request to.
-#     params (dict): The query parameters to include in the request.
-#     headers (dict): The headers to include in the request.
-#     payload (dict): The payload to include in the request.
-
-#   Returns:
-#     requests.models.Response: The response object from the GET request.
-#   """
-#   # Define parameters
-#   params = {
-#     "user_query": "",
-#     "page_type": page_type,
-#     "page_target": collection,
-#     "hits_per_page": hits_per_page,
-#     "page": page,
-#     "aggregations": "false",
-#   }
-
-#   headers = {
-#     'Accept': '*/*',
-#     'Accept-Language': 'en-US,en;q=0.9',
-#     'Connection': 'keep-alive',
-#     'Sec-Fetch-Site': 'same-origin',
-#     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'}
-
-#   base_url =  "https://archive.org/services/search/beta/page_production/" 
-   
-#   filter_map = {}
-#   if len(years) == 2:
-#       start_year, end_year = years
-#       filter_map ={
-#           "year": {str(start_year): "gte", str(end_year): "lte"}
-#       }
-#   else:
-#     filter_map = {
-#         "year": {str(years[0]): "inc"}
-#   }
-      
-#   if subjects:
-#       subject_filter = {}
-#       for subj in subjects:
-#           subject_filter[subj] = "inc"
-#       filter_map["subject"] = subject_filter
-#   params["filter_map"] = json.dumps(filter_map)
-      
-#   response = requests.get(base_url, headers=headers, params=params)
-  
-#   return response
-
+    return response.json()['response']['body']['aggregations'][aggregations]
 
 
 import requests
@@ -111,7 +63,9 @@ def fetch_data_with_params(
     page=1,
     hits_per_page=1000,
     page_type="collection_details",
-    collection="booksbylanguage_hindi", 
+    collection="booksbylanguage_hindi",
+    query="",
+    languages=["English"],
     years=None,
     subjects=None):
     """
@@ -133,13 +87,15 @@ def fetch_data_with_params(
     
     # Define parameters
     params = {
-        "user_query": "",
+        "user_query": query,
         "page_type": page_type,
         "page_target": collection,
         "hits_per_page": hits_per_page,
         "page": page,
         "aggregations_size": 10,
+        "aggregations": "false"
     }
+    
     
     # Set up headers
     headers = {
@@ -165,8 +121,14 @@ def fetch_data_with_params(
             filter_map["year"] = {str(start_year): "gte", str(end_year): "lte"}
         elif len(years) == 1:
             filter_map["year"] = {str(years[0]): ["gte","lte"]}
-    
-    # Add subjects filter if provided
+  
+    if languages:
+        language_filters = {}
+        for lang in languages:
+            language_filters[lang] = "inc"
+        filter_map["language"] = language_filters
+
+
     if subjects:
         subject_filter = {}
         for subj in subjects:
@@ -182,7 +144,7 @@ def fetch_data_with_params(
     retry_delay = 15  # seconds
     for attempt in range(max_retries):
         try:
-            response = requests.get(base_url, headers=headers, params=params, timeout=30)
+            response = requests.get(base_url, headers=headers, params=params, timeout=120)
             response.raise_for_status()
             break
         except (requests.exceptions.Timeout, requests.exceptions.RequestException) as e:

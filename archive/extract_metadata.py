@@ -1,10 +1,10 @@
-from get_metadata import fetch_data_with_params, fetch_aggregateion, get_bucket_aggregation
+from get_metadata import fetch_data_with_params, fetch_aggregation, get_bucket_aggregation
 import time 
 import json
 import os 
 
-FOLDER = "metadata_archive_sanskrit"
-COLLLECTION = "booksbylanguage_sanskrit"
+FOLDER = "metadata_maths"
+COLLLECTION = "texts"
 
 def get_data(years, subjects = None):
     data = []
@@ -25,13 +25,14 @@ def get_data(years, subjects = None):
                 year = [str(start_year), str(end_year)]
 
         print(f"Fetching data for page {page}", year)
-        response = fetch_data_with_params(years=year, subjects=subjects, page=page)
+        response = fetch_data_with_params(years=year, query="mathematics",
+                                          subjects=subjects, page=page, collection=COLLLECTION, languages=["English"])
         
         if response.status_code != 200:
             print(f"Error fetching data for page {page}")
             continue
         data.extend(response.json()['response']['body']['hits']['hits'])
-        time.sleep(2)
+        # time.sleep(2)
         if not data[0]:
             return "fata"
         
@@ -54,7 +55,7 @@ def save_to_jsonl(filename,
 
 if __name__ == "__main__":
 
-    years_agg = fetch_aggregateion(collection=COLLLECTION, aggregations="year")
+    years_agg = fetch_aggregation(collection=COLLLECTION, aggregations="year",query="mathematics", languages=["English"])
     years_agg['buckets']  = sorted(years_agg['buckets'], key=lambda x: x['key'], reverse=True)
     years_agg_buckets = get_bucket_aggregation(years_agg)
     
@@ -90,35 +91,25 @@ if __name__ == "__main__":
         print(f"Data fetched for Expected :: ", t_sum)
         print(f"Data fetched for TOtal :: Unique :: {len(set(i['fields']['identifier'] for i in final_data))}  ::-> count", len(final_data))
 
-        time.sleep(100)
+        # time.sleep(100)
     print("All date wise done ")
     
     # Extracting Extra data on years
     for year_bucket in extra_data_year:
         
         year = str(list(year_bucket['data'].keys())[0])
-        subjects_agg = fetch_aggregateion(collection=COLLLECTION, aggregations="subject", year=year)
+        subjects_agg = fetch_aggregation(collection=COLLLECTION, aggregations="subject", year=year, query="mathematics", languages=["English"])
         subjects_agg_buckets = get_bucket_aggregation(subjects_agg)
         DATA = []
+        
+        if os.path.exists(os.path.join(FOLDER, f"metadata_archive_{year}.jsonl")):
+            print(f"Data already fetched for {year}")
+            continue
+        
         for subject_bucket in subjects_agg_buckets:
             subjects = list(subject_bucket['data'].keys())
             data = get_data(year_bucket, subjects=subjects)
             print(f"Data fetched for {subjects} expected {subject_bucket['total_sum']} for year {year} :: ", len(data))
             DATA.extend(data)
         save_to_jsonl(f"metadata_archive_{year}.jsonl", DATA)
-        
-    # if True:
-    #     subjects_agg = fetch_aggregateion(collection=COLLLECTION, aggregations="subject", year=None)
-    #     subjects_agg_buckets = get_bucket_aggregation(subjects_agg)
-    #     DATA = []
-    #     for subject_bucket in subjects_agg_buckets:
-    #         subjects = list(subject_bucket['data'].keys())
-    #         if subject_bucket['total_sum'] ==0:
-    #             continue
-    #         year_bucket = {'total_sum': subject_bucket['total_sum'], 
-    #                        'data': []}
-    #         data = get_data(year_bucket, subjects=subjects)
-    #         print(f"Data fetched for {subjects} expected {subject_bucket['total_sum']}  :: ", len(data))
-    #         # DATA.extend(data)
-    #         subject= "-".join(subjects[:2])
-    #         save_to_jsonl(f"metadata_archive_{subject}.jsonl", data)
+   
